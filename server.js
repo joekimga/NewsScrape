@@ -3,12 +3,13 @@ var exphbs = require("express-handlebars");
 var mongoose = require("mongoose");
 var bodyParser = require("body-parser");
 var cheerio = require("cheerio");
-var request = require("request");
+// var request = require("request");
+var logger = require("morgan");
+var axios = require("axios");
+
 
 // Require all models
 var db = require("./models");
-var articles = require("./models/articles.js");
-var notes = require("./models/notes.js");
 
 // Set up our port to be either the host's designated port, or 3000
 var PORT = process.env.PORT || 3000;
@@ -16,22 +17,15 @@ var PORT = process.env.PORT || 3000;
 // Instantiate our Express App
 var app = express();
 
-// Require our routes
-var routes = require("./routes");
-
-// Designate our public folder as a static directory
+// Use morgan logger for logging requests
+app.use(logger("dev"));
+// Use body-parser for handling form submissions
+app.use(bodyParser.urlencoded({ extended: false }));
+// Use express.static to serve the public folder as a static directory
 app.use(express.static("public"));
 
-// Connect Handlebars to our Express app
-app.engine("handlebars", exphbs({ defaultLayout: "main" }));
-app.set("view engine", "handlebars");
+// Set mongoose to leverage built in JavaScript ES6 Promises
 
-// Use bodyParser in our app
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-
-// Have every request go through our route middleware
-app.use(routes);
 
 // If deployed, use the deployed database. Otherwise use the local mongoHeadlines database
 var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/mongoHeadlines";
@@ -40,8 +34,41 @@ var MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/mongoHeadlines
 // Connect to the Mongo DB
 mongoose.Promise = Promise;
 mongoose.connect(MONGODB_URI, {
-  useMongoClient: true
+
 });
+
+
+
+app.get("/scrape", function(req, res) {
+	console.log("scrape");
+	axios.get("http://www.ajc.com/").then(function(response) {
+		var $ = cheerio.load(response.data);
+		var testArray = [];
+		$("div.medium-story-tile").each(function(i, element) {
+			var result = {};
+
+			result.title = $(this)
+				.children("div.tile-headline")
+				.children("a")
+				.text();
+
+			result.link = $(this)
+				.children("div.tile-headline")
+				.children("a")
+				.attr("href");	
+			testArray.push(result);	
+
+		})
+		res.json(testArray);
+	});
+});
+
+
+
+
+
+
+
 
 // Listen on the port
 app.listen(PORT, function() {
