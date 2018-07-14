@@ -57,16 +57,33 @@ app.get("/scrape", function(req, res) {
 				.children("a")
 				.attr("href");	
 			testArray.push(result);	
-
+			var newDBentry = new db.Article(result);
+			newDBentry.save(function(err, doc) {
+				if (err) {
+					console.log(err);
+				}
+				else {
+					console.log(doc);
+				}
+			})
 		})
 		res.json(testArray);
 	});
 });
 
 
+app.get("/", function(req, responseToPage) {
+	console.log("got database");
+
+	db.Article.find({})
+	.then(function(resultsFromQuery) {
+		console.log(resultsFromQuery);
+		responseToPage.json(resultsFromQuery);	
+	}
+	)
 
 
-
+});
 
 
 
